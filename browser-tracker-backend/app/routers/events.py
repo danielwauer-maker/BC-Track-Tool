@@ -64,6 +64,9 @@ async def create_events_batch(
     events: List[schemas.BrowserEventCreate],
     db: Session = Depends(get_db),
 ):
+
+    print(f"[EVENTS] Batch erhalten: {len(events)} Events")  # <--- NEU
+    
     client_ip = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent", "")
 

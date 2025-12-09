@@ -1,98 +1,44 @@
 // content-script.js
 
-// HIER Backend-URL anpassen
-const BACKEND_BASE_URL = "http://0.0.0.0:8000";
-const EVENT_BATCH_MAX = 20;   // wie viele Events vor Flush
-const EVENT_BATCH_INTERVAL = 3000; // ms
+// Backend-Endpunkt
+const BACKEND_EVENTS_URL = "http://127.0.0.1:8000/api/events/batch";
+const EVENT_BATCH_MAX = 20;
+const EVENT_BATCH_INTERVAL = 3000;
 
 let eventBuffer = [];
 let sessionKey = null;
 let userExternalId = null;
 
+// Debug: Content-Script geladen?
+console.log("[LAT] Content script geladen auf:", window.location.href);
+
 // einfache Session-ID generieren
 function generateSessionKey() {
-  return 'sess-' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+  return "sess-" + Math.random().toString(36).substring(2) + Date.now().toString(36);
 }
 
-// Beispiel: User aus DOM lesen – das musst du später an deine BC-Umgebung anpassen
+// TODO: Später an BC-DOM anpassen
 function detectUserExternalId() {
-  // TODO: Anpassen wenn Business Central User im DOM irgendwo sichtbar ist
-  // Fallback: localStorage oder ein Element wie "#userName"
+  // Beispiel: BC blende irgendwo den Usernamen ein
   let fromDom = document.querySelector("#userName, .username, .ms-nav-username");
   if (fromDom && fromDom.textContent) {
     return fromDom.textContent.trim();
   }
-  // als Notfall: Name aus Title oder gar nichts
   return null;
 }
 
-// Event-Objekt generieren
-function buildEventPayload(evt, extra = {}) {
-  const target = evt.target || evt.srcElement;
-  if (!target) return null;
-
-  const pageUrl = window.location.href;
-  const pageTitle = document.title || "";
-
-  const elementType = target.tagName ? target.tagName.toLowerCase() : null;
-  let elementRole = null;
-
-  if (target.tagName === "BUTTON") {
-    elementRole = "Button";
-  } else if (target.tagName === "INPUT" || target.tagName === "SELECT" || target.tagName === "TEXTAREA") {
-    elementRole = "Field";
-  } else if (target.tagName === "A") {
-    elementRole = "Link";
-  }
-
-  const elementLabel =
-    (target.getAttribute("aria-label")) ||
-    (target.labels && target.labels[0] && target.labels[0].innerText) ||
-    target.placeholder ||
-    target.innerText ||
-    null;
-
-  const elementName = target.name || null;
-  const elementId = target.id || null;
-  const elementPath = getDomPath(target);
-
-  // Input-Werte nur bei passenden Aktionen
-  let newVal = null;
-  if (target.value !== undefined && (evt.type === "change" || evt.type === "input" || evt.type === "blur")) {
-    newVal = target.value;
-  }
-
-  const payload = {
-    timestamp: new Date().toISOString(),
-    user_external_id: userExternalId,
-    session_key: sessionKey,
-
-    page_url: pageUrl,
-    page_title: pageTitle,
-
-    element_type: elementType,
-    element_role: elementRole,
-    element_label: truncate(elementLabel, 200),
-    element_name: truncate(elementName, 200),
-    element_id: truncate(elementId, 200),
-    element_path: truncate(elementPath, 500),
-
-    action_type: evt.type,
-    old_value: null,   // kann man später im Script tracken
-    new_value: newVal,
-
-    meta: extra
-  };
-
-  return payload;
+function truncate(str, maxLength) {
+  if (!str) return null;
+  if (str.length <= maxLength) return str;
+  return str.substring(0, maxLength) + "...";
 }
 
-// DOM-Pfad einfach (nicht 100% unique, aber ausreichend für Prototyp)
+// Dom-Pfad
 function getDomPath(el) {
-  if (!el || !el.parentNode) return el.tagName;
+  if (!el || !el.parentNode) return el?.tagName || null;
   const stack = [];
   let node = el;
-  while (node.parentNode != null) {
+  while (node && node.parentNode) {
     let sibCount = 0;
     let sibIndex = 0;
     for (let i = 0; i < node.parentNode.childNodes.length; i++) {
@@ -116,90 +62,167 @@ function getDomPath(el) {
   return stack.join(" > ");
 }
 
-function truncate(str, maxLength) {
-  if (!str) return null;
-  if (str.length <= maxLength) return str;
-  return str.substring(0, maxLength) + "...";
+function buildEventPayload(evt, extra = {}) {
+  const target = evt.target || evt.srcElement;
+  if (!target) return null;
+
+  const pageUrl = window.location.href;
+  const pageTitle = document.title || "";
+
+  const elementType = target.tagName ? target.tagName.toLowerCase() : null;
+  let elementRole = null;
+
+  if (target.tagName === "BUTTON") {
+    elementRole = "Button";
+  } else if (["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) {
+    elementRole = "Field";
+  } else if (target.tagName === "A") {
+    elementRole = "Link";
+  }
+
+  const elementLabel =
+    target.getAttribute("aria-label") ||
+    (target.labels && target.labels[0] && target.labels[0].innerText) ||
+    target.placeholder ||
+    target.innerText ||
+    null;
+
+  const elementName = target.name || null;
+  const elementId = target.id || null;
+  const elementPath = getDomPath(target);
+
+  let newVal = null;
+  if (
+    target.value !== undefined &&
+    (evt.type === "change" || evt.type === "blur")
+  ) {
+    newVal = target.value;
+  }
+
+  const payload = {
+    timestamp: new Date().toISOString(),
+    user_external_id: userExternalId,
+    session_key: sessionKey,
+
+    page_url: pageUrl,
+    page_title: pageTitle,
+
+    element_type: elementType,
+    element_role: elementRole,
+    element_label: truncate(elementLabel, 200),
+    element_name: truncate(elementName, 200),
+    element_id: truncate(elementId, 200),
+    element_path: truncate(elementPath, 500),
+
+    action_type: evt.type,
+    old_value: null,
+    new_value: newVal,
+    meta: extra
+  };
+
+  return payload;
 }
 
-// Buffer verarbeiten
 function flushEventBuffer() {
   if (eventBuffer.length === 0) return;
+
   const batch = eventBuffer.slice();
   eventBuffer = [];
 
-  chrome.runtime.sendMessage(
-    {
-      type: "BROWSER_EVENTS_BATCH",
-      events: batch
+  console.log("[LAT] Sende Batch an Backend:", batch.length, "Events");
+
+  fetch(BACKEND_EVENTS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
     },
-    () => {
-      // Optional: Callback-Fehler ignorieren
-      const err = chrome.runtime.lastError;
-      if (err) {
-        console.debug("Error sending batch to background:", err.message);
+    body: JSON.stringify(batch)
+  })
+    .then((res) => {
+      console.log("[LAT] Antwort vom Backend:", res.status, res.statusText);
+      if (!res.ok) {
+        return res.text().then((t) => {
+          console.error("[LAT] Fehler-Body:", t);
+        });
       }
-    }
-  );
+    })
+    .catch((err) => {
+      console.error("[LAT] Fetch-Fehler:", err);
+    });
 }
 
-// Listener registrieren
 function setupEventListeners() {
-  document.addEventListener("click", (evt) => {
-    const payload = buildEventPayload(evt, {
-      mouse_button: evt.button,
-      client_x: evt.clientX,
-      client_y: evt.clientY
-    });
-    if (payload) {
-      eventBuffer.push(payload);
-      if (eventBuffer.length >= EVENT_BATCH_MAX) {
-        flushEventBuffer();
-      }
-    }
-  }, true);
+  console.log("[LAT] Registriere Event-Listener im Frame:", window.location.href);
 
-  document.addEventListener("change", (evt) => {
-    const payload = buildEventPayload(evt);
-    if (payload) {
-      eventBuffer.push(payload);
-      if (eventBuffer.length >= EVENT_BATCH_MAX) {
-        flushEventBuffer();
-      }
-    }
-  }, true);
+  document.addEventListener(
+    "click",
+    (evt) => {
+      console.log("[LAT] Raw click event auf", window.location.href, "Target:", evt.target);
 
-  document.addEventListener("input", (evt) => {
-    // Optional: nur bei bestimmten Feldern loggen, um Spam zu vermeiden
-    const payload = buildEventPayload(evt);
-    if (payload) {
-      eventBuffer.push(payload);
-      if (eventBuffer.length >= EVENT_BATCH_MAX) {
-        flushEventBuffer();
+      const payload = buildEventPayload(evt, {
+        mouse_button: evt.button,
+        client_x: evt.clientX,
+        client_y: evt.clientY
+      });
+      if (payload) {
+        eventBuffer.push(payload);
+        console.log("[LAT] Event in Buffer gelegt. Buffer-Länge:", eventBuffer.length);
+        if (eventBuffer.length >= EVENT_BATCH_MAX) {
+          flushEventBuffer();
+        }
+      } else {
+        console.log("[LAT] Konnte für diesen Click kein Payload bauen");
       }
-    }
-  }, true);
+    },
+    true
+  );
 
-  document.addEventListener("keydown", (evt) => {
-    const payload = buildEventPayload(evt, {
-      key: evt.key,
-      code: evt.code
-    });
-    if (payload) {
-      eventBuffer.push(payload);
-      if (eventBuffer.length >= EVENT_BATCH_MAX) {
-        flushEventBuffer();
+  document.addEventListener(
+    "change",
+    (evt) => {
+      console.log("[LAT] Raw change event auf", window.location.href, "Target:", evt.target);
+
+      const payload = buildEventPayload(evt);
+      if (payload) {
+        eventBuffer.push(payload);
+        console.log("[LAT] Event in Buffer gelegt (change). Buffer-Länge:", eventBuffer.length);
+        if (eventBuffer.length >= EVENT_BATCH_MAX) {
+          flushEventBuffer();
+        }
       }
-    }
-  }, true);
+    },
+    true
+  );
 
-  // zyklischer Flush
-  setInterval(flushEventBuffer, EVENT_BATCH_INTERVAL);
+  document.addEventListener(
+    "keydown",
+    (evt) => {
+      const payload = buildEventPayload(evt, {
+        key: evt.key,
+        code: evt.code
+      });
+      if (payload) {
+        eventBuffer.push(payload);
+        console.log("[LAT] Keydown-Event in Buffer. Buffer-Länge:", eventBuffer.length, "Key:", evt.key);
+        if (eventBuffer.length >= EVENT_BATCH_MAX) {
+          flushEventBuffer();
+        }
+      }
+    },
+    true
+  );
+
+  setInterval(() => {
+    console.log("[LAT] Timer-Flush. Aktuelle Buffer-Länge:", eventBuffer.length);
+    flushEventBuffer();
+  }, EVENT_BATCH_INTERVAL);
 }
+
 
 // Init
 (function init() {
   sessionKey = generateSessionKey();
   userExternalId = detectUserExternalId();
+  console.log("[LAT] Session:", sessionKey, "User:", userExternalId);
   setupEventListeners();
 })();

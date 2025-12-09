@@ -25,8 +25,12 @@ class Session(Base):
     __tablename__ = "sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    session_key = Column(String(255), index=True)  # vom Client generiert
+    # ALT:
+    # user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # NEU:
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+
+    session_key = Column(String(255), index=True)
     started_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     ended_at = Column(DateTime(timezone=True), nullable=True)
     client_ip = Column(String(64), nullable=True)

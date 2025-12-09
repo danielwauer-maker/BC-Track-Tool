@@ -7,18 +7,17 @@
     "storage"
   ],
   "host_permissions": [
-    "http://0.0.0.0:8000/*"
+    "http://127.0.0.1:8000/*",
+    "http://172.20.2.10:8080/*"
   ],
-  "background": {
-    "service_worker": "background.js"
-  },
   "content_scripts": [
     {
       "matches": [
-        "https://172.20.2.10:8080/BC-TEST*"
+        "http://172.20.2.10:8080/*"
       ],
       "js": ["content-script.js"],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "all_frames": true           // <--- WICHTIG
     }
   ]
 }
