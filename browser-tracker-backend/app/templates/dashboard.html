@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-label">Events gesamt</div>
+        <div class="kpi-value">{{ total_events }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Nutzer</div>
+        <div class="kpi-value">{{ total_users }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Sessions</div>
+        <div class="kpi-value">{{ total_sessions }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Events letzte 24h</div>
+        <div class="kpi-value">{{ events_last_24h }}</div>
+    </div>
+</section>
+
+<section class="chart-section">
+    <h2>Events pro Stunde (letzte 24h)</h2>
+    <canvas id="eventsByHourChart"></canvas>
+</section>
+
+<section class="grid-2">
+    <div>
+        <h2>Top Nutzer</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nutzer</th>
+                    <th>External ID</th>
+                    <th>Events</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for u in top_users %}
+                <tr>
+                    <td>{{ u.display_name or "-" }}</td>
+                    <td>{{ u.external_id }}</td>
+                    <td>{{ u.event_count }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div>
+        <h2>Top Seiten</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>URL</th>
+                    <th>Events</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for p in top_pages %}
+                <tr>
+                    <td class="truncate">{{ p.page_url }}</td>
+                    <td>{{ p.event_count }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<script>
+    const labels = [
+        {% for r in events_by_hour %}
+            "{{ r.hour }}",
+        {% endfor %}
+    ];
+    const data = [
+        {% for r in events_by_hour %}
+            {{ r.count }},
+        {% endfor %}
+    ];
+
+    const ctx = document.getElementById('eventsByHourChart').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Events',
+                data,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { title: { display: true, text: 'Stunde' } },
+                y: { beginAtZero: true, title: { display: true, text: 'Events' } }
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "BC Browser Activity Tracker",
+  "description": "Erfasst Nutzeraktionen auf Business Central und sendet sie an ein internes Backend.",
+  "version": "0.1.0",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "http://0.0.0.0:8000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://172.20.2.10:8080/BC-TEST*"
+      ],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
