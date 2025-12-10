@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="page-title">Nutzer-Analyse</h1>
+
+<section class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-label">Benutzer (External ID)</div>
+        <div class="kpi-value">{{ user.external_id }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Anzeigename</div>
+        <div class="kpi-value">{{ user.display_name or "-" }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Events gesamt</div>
+        <div class="kpi-value">{{ stats.event_count or 0 }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Companies</div>
+        <div class="kpi-value">{{ stats.company_count or 0 }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">BC-Seiten (Page-IDs)</div>
+        <div class="kpi-value">{{ stats.page_count or 0 }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Zeitraum</div>
+        <div class="kpi-value">
+            {% if stats.first_activity and stats.last_activity %}
+                {{ stats.first_activity }} –<br/>{{ stats.last_activity }}
+            {% else %}
+                -
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="chart-section">
+    <h2>Verteilung nach Aktionstyp</h2>
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>Aktionstyp</th>
+            <th>Anzahl</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for a in action_stats %}
+            <tr>
+                <td>{{ a.action_type }}</td>
+                <td>{{ a.cnt }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="chart-section">
+    <h2>Top Business Central Seiten</h2>
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>Company</th>
+            <th>Page-ID</th>
+            <th>Seitentitel</th>
+            <th>Events</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for p in top_pages %}
+            <tr>
+                <td>{{ p.bc_company or "-" }}</td>
+                <td>{{ p.bc_page_id or "-" }}</td>
+                <td>{{ p.page_title or "-" }}</td>
+                <td>{{ p.cnt }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="chart-section">
+    <h2>Letzte Aktivitäten (max. 200 Events)</h2>
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>Zeitpunkt</th>
+            <th>Company</th>
+            <th>Page-ID</th>
+            <th>Aktion</th>
+            <th>Element</th>
+            <th>Neuer Wert</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for e in events %}
+            <tr>
+                <td>{{ e.timestamp }}</td>
+                <td>{{ e.bc_company or "-" }}</td>
+                <td>{{ e.bc_page_id or "-" }}</td>
+                <td>{{ e.action_type }}</td>
+                <td>
+                    {{ e.element_role or "" }}
+                    {% if e.element_label %}
+                        – {{ e.element_label }}
+                    {% elif e.element_name %}
+                        – {{ e.element_name }}
+                    {% endif %}
+                </td>
+                <td class="truncate">
+                    {% if e.new_value %}
+                        {{ e.new_value }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

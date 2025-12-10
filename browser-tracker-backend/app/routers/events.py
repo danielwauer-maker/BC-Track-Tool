@@ -13,12 +13,19 @@ router = APIRouter(prefix="/api/events", tags=["events"])
 def get_or_create_user(db: Session, external_id: str | None):
     if not external_id:
         return None
-    user = db.query(models.User).filter(models.User.external_id == external_id).first()
+
+    user = (
+        db.query(models.User)
+        .filter(models.User.external_id == external_id)
+        .first()
+    )
+
     if not user:
         user = models.User(external_id=external_id)
         db.add(user)
         db.commit()
         db.refresh(user)
+
     return user
 
 
@@ -90,6 +97,8 @@ async def create_events_batch(
             user_id=user.id if user else None,
             page_url=ev.page_url,
             page_title=ev.page_title,
+            bc_page_id=ev.bc_page_id,
+            bc_company=ev.bc_company,
             element_type=ev.element_type,
             element_role=ev.element_role,
             element_label=ev.element_label,

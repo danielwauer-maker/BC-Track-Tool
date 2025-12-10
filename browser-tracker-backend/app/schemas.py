@@ -12,6 +12,9 @@ class BrowserEventBase(BaseModel):
     page_url: str
     page_title: Optional[str] = None
 
+    bc_page_id: int | None = None    # NEU
+    bc_company: str | None = None    # NEU
+
     element_type: Optional[str] = None
     element_role: Optional[str] = None
     element_label: Optional[str] = None

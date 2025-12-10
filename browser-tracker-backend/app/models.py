@@ -52,6 +52,10 @@ class BrowserEvent(Base):
     page_url = Column(Text, nullable=False)
     page_title = Column(Text, nullable=True)
 
+    # NEU: BC-spezifisch
+    bc_page_id = Column(Integer, nullable=True, index=True)
+    bc_company = Column(String(100), nullable=True, index=True)
+
     element_type = Column(String(64), nullable=True)   # input, button, select, ...
     element_role = Column(String(64), nullable=True)   # Field, Button, Link, Table
     element_label = Column(Text, nullable=True)

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="page-title">Nutzerübersicht</h1>
+
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Benutzer (external_id)</th>
+            <!--<th>Anzeigename</th>-->
+            <th>Events</th>
+            <th>Letzte Aktivität</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for u in users %}
+        <tr>
+            <td>
+                <a href="{{ url_for('users_user_detail', user_id=u.id) }}">
+                    {{ u.external_id }}
+                </a>
+            </td>
+            <!--<td>{{ u.display_name or "-" }}</td>-->
+            <td>{{ u.event_count }}</td>
+            <td>
+                {% if u.last_activity %}
+                    	{% if u.last_activity.__class__.__name__ == 'datetime' %}
+        			{{ u.last_activity.strftime("%d.%m.%Y %H:%M:%S") }}
+    			{% else %}
+        			{{ u.last_activity.split('.')[0].replace("-", ".").replace("T", " ") }}
+    			{% endif %}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

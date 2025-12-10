@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="page-title">Nutzer-Details</h1>
+
+<section class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-label">Benutzer (external_id)</div>
+        <div class="kpi-value">{{ user.external_id }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Anzeigename</div>
+        <div class="kpi-value">{{ user.display_name or "-" }}</div>
+    </div>
+</section>
+
+<section class="chart-section">
+    <h2>Letzte Aktivitäten (max. 200 Events)</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Zeitpunkt</th>
+                <th>Seite</th>
+                <th>Aktion</th>
+                <th>Element</th>
+                <th>Wert (neu)</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for e in events %}
+            <tr>
+                <td>{{ e.timestamp }}</td>
+                <td class="truncate">{{ e.page_url }}</td>
+                <td>{{ e.action_type }}</td>
+                <td>
+                    {{ e.element_role or "" }}
+                    {% if e.element_label %}
+                        – {{ e.element_label }}
+                    {% elif e.element_name %}
+                        – {{ e.element_name }}
+                    {% endif %}
+                </td>
+                <td class="truncate">
+                    {% if e.new_value %}
+                        {{ e.new_value }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="chart-section">
+    <h2>Top Business Central Seiten</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Company</th>
+                <th>Page ID</th>
+                <th>Seitentitel</th>
+                <th>URL</th>
+                <th>Events</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for p in top_pages %}
+            <tr>
+                <td>{{ p.bc_company or "-" }}</td>
+                <td>{{ p.bc_page_id or "-" }}</td>
+                <td>{{ p.page_title or "-" }}</td>
+                <td class="truncate">
+                    {% if p.page_url %}
+                        <a href="{{ p.page_url }}" target="_blank">{{ p.page_url }}</a>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>{{ p.cnt }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+{% endblock %}

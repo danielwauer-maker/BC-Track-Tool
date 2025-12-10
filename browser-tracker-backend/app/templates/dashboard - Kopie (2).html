@@ -62,7 +62,7 @@
 
 <section class="grid-2">
     <div>
-        <h2>Top Nutzer nach Nutzung</h2>
+        <h2>Top Nutzer</h2>
         <table class="data-table">
             <thead>
                 <tr>
@@ -84,36 +84,24 @@
     </div>
 
     <div>
-    <h2>Top Pages nach Nutzung</h2>
-    <table class="data-table">
-        <thead>
-            <tr>
-                <!--<th>Company</th>-->
-                <th>Page-ID</th>
-                <th>Basis-URL</th>
-                <th>Events</th>
-                <th>Nutzer</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for p in top_pages %}
-            <tr>
-               <!-- <td>{{ p.company or "-" }}</td>-->
-                <td>{{ p.page_id or "-" }}</td>
-                <td class="truncate">
-                    {% if p.page_url %}
-                        {{ p.page_url.split('?')[0] }}
-                    {% else %}
-                        -
-                    {% endif %}
-                </td>
-                <td>{{ p.event_count }}</td>
-                <td>{{ p.user_count }}</td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-</div>
+        <h2>Top Seiten</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>URL</th>
+                    <th>Events</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for p in top_pages %}
+                <tr>
+                    <td class="truncate">{{ p.page_url }}</td>
+                    <td>{{ p.event_count }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </section>
 
 <script>

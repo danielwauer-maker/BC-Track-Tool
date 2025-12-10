@@ -46,18 +46,15 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    # Top 5 Seiten (nach Page-ID) mit Event-Anzahl und Anzahl unterschiedlicher Nutzer
+    # Top 5 Seiten
     top_pages = (
         db.query(
-            models.BrowserEvent.bc_page_id.label("page_id"),
-            func.min(models.BrowserEvent.page_url).label("page_url"),
+            models.BrowserEvent.page_url,
             func.count(models.BrowserEvent.id).label("event_count"),
-            func.count(func.distinct(models.BrowserEvent.user_id)).label("user_count"),
         )
-        .filter(models.BrowserEvent.bc_page_id.isnot(None))
-        .group_by(models.BrowserEvent.bc_page_id)
+        .group_by(models.BrowserEvent.page_url)
         .order_by(desc("event_count"))
-        .limit(10)
+        .limit(5)
         .all()
     )
 

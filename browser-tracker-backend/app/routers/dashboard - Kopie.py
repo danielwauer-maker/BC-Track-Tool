@@ -18,7 +18,6 @@ templates = Jinja2Templates(directory="app/templates")
 async def dashboard(request: Request, db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
     since_24h = now - timedelta(hours=24)
-    since_365d = now - timedelta(days=365)
 
     total_events = db.query(func.count(models.BrowserEvent.id)).scalar() or 0
     total_users = db.query(func.count(models.User.id)).scalar() or 0
@@ -46,46 +45,26 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    # Top 5 Seiten (nach Page-ID) mit Event-Anzahl und Anzahl unterschiedlicher Nutzer
+    # Top 5 Seiten
     top_pages = (
         db.query(
-            models.BrowserEvent.bc_page_id.label("page_id"),
-            func.min(models.BrowserEvent.page_url).label("page_url"),
+            models.BrowserEvent.page_url,
             func.count(models.BrowserEvent.id).label("event_count"),
-            func.count(func.distinct(models.BrowserEvent.user_id)).label("user_count"),
         )
-        .filter(models.BrowserEvent.bc_page_id.isnot(None))
-        .group_by(models.BrowserEvent.bc_page_id)
+        .group_by(models.BrowserEvent.page_url)
         .order_by(desc("event_count"))
-        .limit(10)
+        .limit(5)
         .all()
     )
 
-    # Events pro Tag (letzte 365 Tage)
-    events_by_day = (
+    # Events pro Stunde für Chart
+    since_24h_floor = since_24h.replace(minute=0, second=0, microsecond=0)
+    events_by_hour = (
         db.query(
-            func.date(models.BrowserEvent.timestamp).label("day"),
+            func.strftime("%Y-%m-%d %H:00", models.BrowserEvent.timestamp).label("hour"),
             func.count(models.BrowserEvent.id).label("count"),
         )
-        .filter(models.BrowserEvent.timestamp >= since_365d)
-        .group_by("day")
-        .order_by("day")
-        .all()
-    )
-
-    # Events pro Stunde (heute, 0–23 Uhr)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    tomorrow_start = today_start + timedelta(days=1)
-
-    events_by_hour_today = (
-        db.query(
-            func.strftime("%H", models.BrowserEvent.timestamp).label("hour"),
-            func.count(models.BrowserEvent.id).label("count"),
-        )
-        .filter(
-            models.BrowserEvent.timestamp >= today_start,
-            models.BrowserEvent.timestamp < tomorrow_start,
-        )
+        .filter(models.BrowserEvent.timestamp >= since_24h_floor)
         .group_by("hour")
         .order_by("hour")
         .all()
@@ -101,7 +80,6 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "events_last_24h": events_last_24h,
             "top_users": top_users,
             "top_pages": top_pages,
-            "events_by_day": events_by_day,
-            "events_by_hour_today": events_by_hour_today,
+            "events_by_hour": events_by_hour,
         },
     )
